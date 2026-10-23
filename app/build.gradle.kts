@@ -102,8 +102,13 @@ dependencies {
     // sistem Task<> async. Semua kit lain bergantung padanya.
     implementation(libs.hms.base)
 
-    // 1) Account Kit — sign-in dengan Huawei ID (availableaccount = API level)
-    implementation(libs.hms.availableaccount)
+    // 1) Account Kit — sign-in dengan Huawei ID.
+    //    DULU kita menambahkan "com.huawei.hms:availableaccount", tetapi artefak itu
+    //    TIDAK tersedia di Maven repo Huawei (diverifikasi: HTTP 404), sehingga
+    //    gradle sync gagal "Failed to resolve". API Account Kit (HuaweiIdAuthService,
+    //    Scopes, dll.) sebenarnya sudah tercakup lewat hms-base di atas, jadi tidak
+    //    perlu dependensi tambahan. Komentar ini ditinggalkan supaya alurnya jelas.
+    // implementation("com.huawei.hms:availableaccount:<versi>")  // <- nonaktif
 
     // 2) Location Kit — lokasi terfusi (GPS + jaringan + sensor Huawei)
     implementation(libs.hms.location)
