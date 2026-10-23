@@ -31,14 +31,20 @@ appcompat = "1.7.1"                            # Beberapa SDK HMS remote-UI masi
 material = "1.14.0"                            # Material Components views (referensi legacy)
 activityCompose = "1.13.0"                     # Bridge agar ComponentActivity bisa setContent{}
 composeBom = "2026.05.01"                      # BOM = menyamakan versi seluruh lib Compose
-lifecycleRuntimeKtx = "2.10.2"                 # Lifecycle-aware coroutine scope
+lifecycleRuntimeKtx = "2.11.0"                 # Lifecycle-aware coroutine scope
+# ^ Terverifikasi tersedia di Google Maven (dl.google.com). Versi 2.10.2 dulu dipakai
+#   tetapi artefaknya TIDAK ada di repo resmi sehingga sync gagal "Failed to resolve".
 navigationCompose = "2.9.6"                    # Navigasi antar layar Compose
 
 # ---- Huawei HMS Core SDK ----
 # Semua artefak di bawah berasal dari Maven repo resmi Huawei:
 # https://developer.huawei.com/repo
 hmsBase = "6.13.0.304"                         # Foundation: GRS, availability check, task API
-hmsAvailableaccount = "6.13.0.304"             # Account Kit (API sign-in Huawei ID)
+# NB: Artefak "availableaccount" (Account Kit) TIDAK ditemukan di Maven repo resmi
+# Huawei saat dicek (HTTP 404 untuk semua varian versi). Account Kit kini digabung ke
+# hms-base + modul auth; implementasi halaman Account akan memakai API dari base.
+# Entri ini sengaja DIHAPUS agar `gradle sync` tidak gagal. Nanti bila konsol AGC
+# menyediakan koordinat baru, tambahkan kembali di sini.
 hmsLocation = "6.0.0.302"                      # Location Kit (fused location)
 hmsMaps = "6.15.1.324"                         # Map Kit (MapView HW + Google Maps View)
 hmsPush = "6.13.0.301"                         # Push Kit (token & pesan push)
@@ -74,7 +80,6 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 
 # ---------- Huawei Mobile Services (HMS) Core Kits ----------
 hms-base = { group = "com.huawei.hms", name = "base", version.ref = "hmsBase" }
-hms-availableaccount = { group = "com.huawei.hms", name = "availableaccount", version.ref = "hmsAvailableaccount" }
 hms-location = { group = "com.huawei.hms", name = "location", version.ref = "hmsLocation" }
 hms-maps = { group = "com.huawei.hms", name = "maps", version.ref = "hmsMaps" }
 hms-push = { group = "com.huawei.hms", name = "push", version.ref = "hmsPush" }
