@@ -13,16 +13,18 @@ import androidx.compose.foundation.background           // latar warna pada Modi
 import androidx.compose.foundation.clickable            // membuat card bisa di-tap
 import androidx.compose.foundation.layout.Arrangement   // pengaturan jarak antar item
 import androidx.compose.foundation.layout.Box           // kontainer sederhana (badge & sel grid)
-import androidx.compose.foundation.layout.Column        // layout vertikal (pembungkus baris-baris kartu)
-import androidx.compose.foundation.layout.Row           // layout horizontal (satu baris grid)
+import androidx.compose.foundation.layout.Column        // layout vertikal (isi kartu)
+import androidx.compose.foundation.layout.Row           // layout horizontal (baris ikon+badge)
 import androidx.compose.foundation.layout.Spacer        // ruang kosong pengatur jarak
 import androidx.compose.foundation.layout.fillMaxSize   // isi penuh lebar+tinggi
 import androidx.compose.foundation.layout.fillMaxWidth  // isi penuh lebar
 import androidx.compose.foundation.layout.height        // tinggi tetap
+import androidx.compose.foundation.layout.heightIn       // batas min/max tinggi (menyeragamkan kartu)
 import androidx.compose.foundation.layout.padding       // padding komposable
 import androidx.compose.foundation.layout.size          // ukuran ikon/box
-// Catatan: import LazyVerticalGrid & GridCells sengaja DIHAPUS karena grid
-// sekarang dibangun manual dengan Column + Row (lihat komentar di DashboardScreen).
+import androidx.compose.foundation.lazy.grid.GridCells  // konfigurasi kolom/spacing LazyGrid
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid // grid yang bisa di-scroll + recycle item
+import androidx.compose.foundation.lazy.grid.items      // fungsi scope: List -> sel grid
 import androidx.compose.foundation.shape.RoundedCornerShape   // sudut membulat
 import androidx.compose.material3.Card                  // komponen kartu dashboard
 import androidx.compose.material3.CardDefaults          // default elevasi/warna card
@@ -59,47 +61,47 @@ fun DashboardScreen(
         }
     ) { innerPadding ->
         // innerPadding dari Scaffold WAJIB dipakai agar konten tidak tertutup
-        // top bar — diteruskan sebagai contentPadding grid.
+        // top bar — kita terapkan sebagai contentPadding grid.
         // --------------------------------------------------------------------
-        // STRATEGI BARU: hindari LazyVerticalGrid sepenuhnya.
-        // Kenapa? API `items(...)` milik LazyGridScope punya banyak overload dan
-        // cara pemanggilannya SANGAT sensitif terhadap versi library Compose di
-        // classpath (gejalanya: "No parameter with name 'items' found" padahal
-        // secara teori overload-nya ada). Alih-alih menebak-nebak versi, kita
-        // pakai Column biasa berisi Row per baris — 100% API stabil sejak awal
-        // Compose, tidak bisa gagal resolve, dan hasilnya visual sama:
-        // dashboard grid 2 kolom dengan jarak antar kartu.
+        // PERBAIKAN LAYOUT (kenapa sebelumnya "berantakan / mepet"):
+        // 1. BUG UTAMA: Spacer antar-baris dulu diletakkan DI DALAM Row. Anak Row
+        //    disusun HORIZONTAL, jadi Spacer tinggi-12dp itu malah jadi "kolom
+        //    ketiga" dan menggeser kartu kedua => jarak & lebar tidak simetris.
+        // 2. Tinggi kartu murni mengikuti panjang subtitle; tiap kit beda panjang
+        //    => ada kartu lebih pendek/tinggi, baris terlihat tidak rata.
+        // SOLUSI FINAL: LazyVerticalGrid dengan `items(list)` BIASA (bukan named
+        // argumen). Catatan penting: error kompilasi sebelumnya
+        // ("No parameter with name 'items' found") terjadi karena pemanggilan
+        // memakai NAMED argument `items = ...` yang bentrok dengan aturan
+        // Kotlin untuk extension function di scope interface. Pemanggilan
+        // posisional `items(kits) { ... }` adalah bentuk standar yang selalu
+        // resolve. Ditambah:
+        //   - GridCells.Fixed(2)  -> kolom selalu pas 2, lebar sel identik.
+        //   - horizontal/verticalArrangement spacedBy -> jarak antar kartu
+        //     konsisten ke semua arah (inilah pengganti Spacer yang salah tadi).
+        //   - heightIn seragam di KitCard -> semua kartu tingginya sama.
+        // LazyVerticalGrid juga otomatis bisa di-scroll — dashboard 8+ menu
+        // tetap rapi di layar kecil.
         // --------------------------------------------------------------------
-        val kits = KitMenu.entries.toList()      // semua enum menu jadi List
-        val columnCount = 2                       // jumlah kolom grid
-        Column(
+        val kits = KitMenu.entries.toList()   // semua enum menu jadi List
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),     // grid 2 kolom SIMETRIS permanen
             modifier = Modifier
-                .fillMaxSize()                    // isi penuh area di bawah top bar
-                .padding(innerPadding)            // hormati padding dari Scaffold
-                .padding(16.dp)                   // jarak tepi konten
+                .fillMaxSize()                // isi penuh area di bawah top bar
+                .padding(innerPadding),       // hormati padding dari Scaffold
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp
+            ),                                // tepi konten + ruang ekstra di bawah
+            horizontalArrangement = Arrangement.spacedBy(12.dp), // jarak antar KOLOM
+            verticalArrangement = Arrangement.spacedBy(12.dp)    // jarak antar BARIS
         ) {
-            // chunked(2) memecah list menjadi baris-baris berisi max 2 item.
-            // Contoh: [A,B,C,D,E,F,G,H] -> [[A,B],[C,D],[E,F],[G,H]]
-            kits.chunked(columnCount).forEachIndexed { rowIndex, rowKits ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(), // baris memenuhi lebar layar
-                    horizontalArrangement = Arrangement.spacedBy(12.dp) // jarak antar kolom
-                ) {
-                    if (rowIndex > 0) Spacer(modifier = Modifier.height(12.dp))
-                    rowKits.forEach { kit ->
-                        // Modifier.weight(1f) = bagi rata lebar tersisa kepada
-                        // setiap kartu sehingga kedua kolom selalu simetris.
-                        Box(modifier = Modifier.weight(1f)) {
-                            KitCard(kit = kit, onClick = { onKitClick(kit.route) })
-                        }
-                    }
-                    // Kalau jumlah item ganjil (mis. baris terakhir cuma 1 kartu),
-                    // tambahkan Box kosong berbobot agar kartu tetap separuh lebar
-                    // (tidak melar memenuhi layar).
-                    repeat(columnCount - rowKits.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
+            // Bentuk POSISIONAL items(List) { item -> ... } : setiap elemen list
+            // menjadi satu sel grid; lambda berisi UI sel-nya.
+            items(kits) { kit ->
+                KitCard(
+                    kit = kit,
+                    onClick = { onKitClick(kit.route) } // tap -> navigate ke halaman kit
+                )
             }
         }
     }
@@ -116,6 +118,11 @@ private fun KitCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()   // kartu melebar mengikuti kolom grid
+            // heightIn(min) = tinggi MINIMUM seragam untuk semua kartu.
+            // Ini yang membuat baris terlihat rapi: kartu dengan subtitle 1 baris
+            // tidak lagi lebih pendek dari kartu dengan subtitle 2 baris.
+            // max 200.dp menjaga kartu tidak melar berlebihan jika teks panjang.
+            .heightIn(min = 150.dp, max = 200.dp)
             // clickable memberi efek ripple + memanggil onClick saat ditekan.
             // Inilah titik tempat "tap user" berubah menjadi "navigasi".
             .clickable(onClick = onClick),
