@@ -30,7 +30,10 @@ import androidx.compose.material3.CardDefaults          // default elevasi/warna
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme         // akses warna/tipografi tema
 import androidx.compose.material3.Scaffold              // kerangka layar (topBar+isi)
-import androidx.compose.material3.SmallTopAppBar        // judul atas layar
+// PENTING: SmallTopAppBar SUDAH DIHAPUS dari Material3 versi terbaru.
+// Nama resminya sekarang TopAppBar (stabil, tidak eksperimen lagi).
+// Kalau kamu membaca tutorial lama yang memakai SmallTopAppBar -> ganti TopAppBar.
+import androidx.compose.material3.TopAppBar             // judul atas layar (pengganti SmallTopAppBar)
 import androidx.compose.material3.Text                  // komponen teks
 import androidx.compose.runtime.Composable              // penanda fungsi UI
 import androidx.compose.ui.Alignment                    // perataan (tengah dll)
@@ -52,7 +55,8 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             // Judul aplikasi di bagian atas.
-            SmallTopAppBar(title = { Text("Huawei Eco", fontWeight = FontWeight.Bold) })
+            // TopAppBar (Material3) = pengganti SmallTopAppBar dari versi M3 lama.
+            TopAppBar(title = { Text("Huawei Eco", fontWeight = FontWeight.Bold) })
         }
     ) { innerPadding ->
         // innerPadding dari Scaffold WAJIB dipakai agar konten tidak tertutup
@@ -68,10 +72,21 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp), // jarak antar baris
             horizontalArrangement = Arrangement.spacedBy(12.dp) // jarak antar kolom
         ) {
-            // `items` versi extension untuk List<T>: satu iterasi per elemen.
-            // LazyVerticalGrid punya scope sendiri sehingga kita panggil items{}
-            // di dalam blok grid, bukan di luar.
-            items(KitMenu.entries.toList()) { kit ->
+            // `items` untuk LazyVerticalGrid punya BANYAK overload, dan urutan
+            // parameternya penting:
+            //   items(count: Int)                  <- hanya angka
+            //   items(items: List<T>, key: ...)    <- list + lambda
+            // Kesalahan kompilasi sebelumnya ("List<KitMenu> but Int expected")
+            // terjadi karena kita MELEWATKAN parameter `items:` saat memakai
+            // named-arg `key:` — Kotlin lalu jatuh ke overload `count: Int`.
+            // Perbaikan: sebutkan `items = ...` secara eksplisit lebih dulu.
+            items(
+                items = KitMenu.entries.toList(), // daftar enum menu kit
+                // key membantu Compose mengidentifikasi tiap item secara stabil
+                // saat list berubah (optimasi recomposition / reuse slot).
+                key = { kit -> kit.route }
+            ) { kit ->
+                // `kit` = satu elemen List<KitMenu>; .route dipakai utk navigasi.
                 KitCard(kit = kit, onClick = { onKitClick(kit.route) })
             }
         }
