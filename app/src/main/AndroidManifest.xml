@@ -27,8 +27,19 @@
     <!-- Kamera bukan hardware wajib: emulator/non-kamera tetap bisa install -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- ========================================================================
+         CATATAN MANIFEST MERGER:
+         Library HMS (mis. com.huawei.hms:maps) membawa AndroidManifest sendiri
+         dengan android:allowBackup="false". Karena aplikasi kita juga mendefinisikan
+         atribut yang sama ("true"), Gradle Manifest Merger bingung nilai mana yang
+         menang -> build gagal dengan "Attribute application@allowBackup ... is also
+         present at [com.huawei.hms:maps]".
+         tools:replace = instruksi eksplisit ke merger: "punya akulah yang dipakai".
+         (namespace tools sudah dideklarasikan di tag <manifest> atas)
+    ========================================================================= -->
     <application
         android:allowBackup="true"
+        tools:replace="android:allowBackup"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
