@@ -174,37 +174,39 @@ fun AccountScreen(onBack: () -> Unit) {
                     Text("Memeriksa akun tersimpan (silent sign-in)...", fontSize = 13.sp)
                 }
 
-                AccountUi.Idle -> Button(
-                    // onClick -> panggil requestSignIn lagi (async) lalu tangani
-                    // hasilnya persis seperti LaunchedEffect di atas.
-                    onClick = {
-                        if (activity == null) return@Button
-                        scope.launch {
-                            ui = AccountUi.Loading
-                            when (val req = AccountKitHelper.requestSignIn(activity)) {
-                                is SignInRequest.AlreadySignedIn ->
-                                    ui = AccountUi.SignedIn(req.profile)
-                                is SignInRequest.NeedsUi -> {
-                                    pendingParser = req.onResult
-                                    signInLauncher.launch(req.signInIntent)
-                                    ui = AccountUi.Idle
+                AccountUi.Idle -> {
+                    Button(
+                        // onClick -> panggil requestSignIn lagi (async) lalu tangani
+                        // hasilnya persis seperti LaunchedEffect di atas.
+                        onClick = {
+                            if (activity == null) return@Button
+                            scope.launch {
+                                ui = AccountUi.Loading
+                                when (val req = AccountKitHelper.requestSignIn(activity)) {
+                                    is SignInRequest.AlreadySignedIn ->
+                                        ui = AccountUi.SignedIn(req.profile)
+                                    is SignInRequest.NeedsUi -> {
+                                        pendingParser = req.onResult
+                                        signInLauncher.launch(req.signInIntent)
+                                        ui = AccountUi.Idle
+                                    }
+                                    is SignInRequest.Error ->
+                                        ui = AccountUi.Failed(req.message)
                                 }
-                                is SignInRequest.Error ->
-                                    ui = AccountUi.Failed(req.message)
                             }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Sign in with Huawei ID")
-                }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Sign in with Huawei ID")
+                    }
 
-                // Status HMS Core — membantu debug kalau sign-in gagal.
-                if (hmsInfo.isNotBlank()) {
-                    Text("Status HMS Core: $hmsInfo", fontSize = 12.sp,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Status HMS Core — membantu debug kalau sign-in gagal.
+                    if (hmsInfo.isNotBlank()) {
+                        Text("Status HMS Core: $hmsInfo", fontSize = 12.sp,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
 
                 is AccountUi.SignedIn -> ProfileCard(
