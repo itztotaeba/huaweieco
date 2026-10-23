@@ -8,48 +8,17 @@
 import java.io.File
 import java.net.URI
 
-repositories {
-    // mavenLocal dipakai HANYA untuk POM minimal hwid (ditulis oleh helper
-    // writeHwidLocalPom di bawah); repo Huawei menyusul setelahnya supaya
-    // file .aar tetap diunduh dari sumber resmi. Urutan penting: Gradle
-    // mencatat POM dari ~/.m2 lalu mengambil artifact ber-extension .aar
-    // dari repositori berikutnya yang memilikinya.
-    mavenLocal()
-    maven { url = uri("https://developer.huawei.com/repo/") }
-}
-
 // ============================================================================
-// HWID POM FIX — tulis POM minimal ke maven local (~/.m2) untuk artefak
-// com.huawei.hms:hwid. Fakta terverifikasi (2026-10): repo resmi Huawei hanya
-// menyimpan file .aar; .pom-nya HTTP 404, sehingga Gradle menolak me-resolve
-// koordinat Maven-nya ("Could not find hwid-<v>.pom"). Fungsi ini idempoten
-// dan aman dipanggil berkali-kali; mengembalikan false bila HOME read-only
-// (misal sandbox) — pemanggil otomatis jatuh ke fallback AAR app/libs/.
-// Catatan Gradle 9.x Kotlin DSL: jangan pakai referensi fully-qualified
-// `java.io.*` / `java.net.*` di dalam closure (script compiler tidak resolve
-// paket `java.*` di scope itu) — gunakan import di header file.
+// HWID — Account Kit (com.huawei.hms:hwid 6.15.0.300). Repo resmi Huawei
+// hanya menyimpan file .aar untuk artefak ini (.pom HTTP 404 — diverifikasi),
+// sehingga koordinat Maven tidak bisa di-resolve Gradle. Ditambah lagi modul
+// tidak boleh mendeklarasikan repository() sendiri (RepositoriesMode di
+// settings.gradle.kts menolaknya — sumber error sync terakhir). Solusi final:
+// pakai AAR lokal app/libs/ via implementation(files(...)); task
+// downloadHwidAar (akhir file) mengisi folder itu otomatis saat kosong.
 // ============================================================================
-fun writeHwidLocalPom(pomFile: File, version: String): Boolean = runCatching {
-    if (!pomFile.exists()) {
-        pomFile.parentFile.mkdirs()
-        pomFile.writeText(
-            """<?xml version="1.0" encoding="UTF-8"?>
-               <project xmlns="http://maven.apache.org/POM/4.0.0">
-                 <modelVersion>4.0.0</modelVersion>
-                 <groupId>com.huawei.hms</groupId>
-                 <artifactId>hwid</artifactId>
-                 <version>$version</version>
-                 <packaging>aar</packaging>
-                 <description>Minimal POM (repo Huawei hanya menyediakan .aar).</description>
-               </project>""".trimIndent()
-        )
-        logger.lifecycle("[hwid] POM minimal ditulis ke $pomFile")
-    }
-    pomFile.exists()
-}.getOrElse {
-    logger.warn("[hwid] Tidak bisa menulis POM lokal (${it.message}); memakai fallback app/libs/.")
-    false
-}
+val hwidVersion = libs.versions.hmsHwid.get()
+val hwidAarFile = file("libs/hwid-$hwidVersion.aar")
 
 plugins {
     // Alias dari gradle/libs.versions.toml -> com.android.application v9.4.1.
@@ -195,43 +164,29 @@ dependencies {
     // 1) Account Kit — sign-in dengan Huawei ID.
     //    Artefak resmi: "com.huawei.hms:hwid" 6.15.0.300 (diverifikasi dari
     //    developer.huawei.com/repo; signature API dicocokkan satu-per-satu
-    //    memakai javap terhadap classes.jar dalam AAR). Helper Kotlin kini
-    //    memakai class KONKRET hwid — bukan reflection ke class fiktif
-    //    "...support.api.client.HuaweiIdAuthParams$Builder" yang dulu selalu
-    //    melempar ClassNotFoundException -> pesan "Class Account Kit tidak
-    //    ditemukan" meski HMS Core sehat (kode 0).
+    //    memakai javap terhadap classes.jar dalam AAR). Helper Kotlin memakai
+    //    class KONKRET hwid — bukan reflection ke class fiktif yang dulu
+    //    selalu melempar ClassNotFoundException -> pesan "Class Account Kit
+    //    tidak ditemukan" meski HMS Core sehat (kode 0).
     //
-    //    CATATAN PENTING: repo Huawei hanya menyediakan file .aar untuk hwid;
-    //    file .pom-nya HTTP 404 (diverifikasi), sehingga koordinat Maven
-    //    "com.huawei.hms:hwid" TIDAK bisa di-resolve Gradle secara langsung.
-    //    Solusi bertingkat:
-    //      a) Jalur utama — POM minimal ditulis otomatis ke maven local
-    //         (~/.m2) oleh blok "HWID POM FIX" di bawah, lalu Gradle me-resolve
-    //         koordinat resmi dan mengunduh .aar LANGSUNG dari repo Huawei
-    //         (tidak ada binari yang ikut ter-commit di git).
-    //      b) Fallback offline — bila HOME read-only / sedang offline,
-    //         gunakan AAR cadangan yang tersedia di app/libs/ (task
-    //         downloadHwidAar mengisinya sekali saat file belum ada).
-    val hwidVer = libs.versions.hmsHwid.get()
-    val hwidPomFile = File(
-        System.getProperty("user.home"),
-        ".m2/repository/com/huawei/hms/hwid/$hwidVer/hwid-$hwidVer.pom"
-    )
-    // Jalur utama: POM minimal di maven local -> koordinat resmi hwid bisa
-    // di-resolve & AAR diunduh langsung dari repo Huawei (tanpa binari di git).
-    if (writeHwidLocalPom(hwidPomFile, hwidVer)) {
-        implementation(libs.hms.hwid)
-    } else {
-        // Fallback offline: AAR cadangan yang ter-commit di app/libs/.
-        val aar = file("libs/hwid-$hwidVer.aar")
-        if (!aar.exists()) throw GradleException(
-            "Account Kit (hwid) tidak dapat disiapkan:\n" +
-                "  * POM lokal gagal dibuat (${hwidPomFile}) — cek izin folder ~/.m2, dan\n" +
-                "  * AAR cadangan belum ada (${aar}).\n" +
-                "Jalankan sekali:  ./gradlew :app:downloadHwidAar"
+    //    CATATAN PENTING (mengapa lewat file lokal, bukan koordinat Maven):
+    //      * Repo Huawei hanya menyimpan .aar untuk hwid; .pom-nya HTTP 404
+    //        (diverifikasi), jadi resolve koordinat normal selalu gagal.
+    //      * Modul TIDAK boleh menambah repositories() sendiri — settings
+    //        memakai RepositoriesMode.FAIL_ON_PROJECT_REPOS dan menolak repo
+    //        modul dengan error "Build was configured to prefer settings
+    //        repositories over project repositories but repository 'MavenLocal'
+    //        was added by build file". Satu-satunya jalur yang TIDAK pernah
+    //        menyentuh repositori: deklarasi file langsung di bawah.
+    //      * AAR sumber ada di app/libs/ (ter-commit) dan otomatis diunduh
+    //        ulang oleh task downloadHwidAar bila hilang (lihat akhir file).
+    if (!hwidAarFile.exists()) {
+        throw GradleException(
+            "Account Kit (hwid $hwidVersion) belum siap: AAR sumber tidak ada (${hwidAarFile}).\n" +
+                "Jalankan sekali:  ./gradlew :app:downloadHwidAar   (build biasa juga otomatis mengunduh)"
         )
-        implementation(files(aar))
     }
+    implementation(files(hwidAarFile))
 
     // 2) Location Kit — lokasi terfusi (GPS + jaringan + sensor Huawei)
     implementation(libs.hms.location)
@@ -265,23 +220,14 @@ dependencies {
 }
 
 // ============================================================================
-// downloadHwidAar — mengoreksi resolve "com.huawei.hms:hwid" (Account Kit)
-// ----------------------------------------------------------------------------
-// Fakta terverifikasi (2026-10): repo Maven resmi Huawei hanya menyimpan file
-// .aar untuk artefak hwid; file .pom-nya HTTP 404. Karena Gradle mewajibkan
-// POM saat me-resolve dependensi Maven, koordinat "com.huawei.hms:hwid" TIDAK
-// bisa dipakai langsung (sync gagal "Could not find hwid-<v>.pom"). Solusi:
-// unduh .aar sekali ke app/libs/ lewat task di bawah, lalu deklarasikan
-// implementasinya sebagai file lokal (lihat blok dependencies{}).
-// ===========================================================================
-// Catatan verifikasi (Gradle 8.x + Kotlin DSL): ekspresi `java.net.URI(...)`
-// TIDAK bisa dipakai langsung di dalam closure `doLast {}` — script compiler
-// Gradle gagal resolve paket `java.*` di scope tersebut ("Unresolved reference
-// 'net'"). Karena itu kelas URI/URL diimpor secara eksplisit di header file
-// dan hanya nama pendeknya yang digunakan di dalam task.
-val hwidVersion = libs.versions.hmsHwid.get()
-val hwidAarFile = file("libs/hwid-$hwidVersion.aar")
-
+// downloadHwidAar — unduh AAR Account Kit (hwid) dari repo resmi Huawei ke
+// app/libs/ bila belum ada. Repo Huawei hanya menyimpan .aar untuk hwid
+// (.pom HTTP 404 — diverifikasi), jadi koordinat Maven tidak bisa di-resolve
+// langsung; AAR lokal inilah yang dipakai via implementation(files(...)).
+// Catatan verifikasi (Gradle 9.x + Kotlin DSL): ekspresi fully-qualified
+// `java.net.URI(...)` TIDAK resolve di dalam closure — kelas URI/URL diimpor
+// eksplisit di header file dan hanya nama pendeknya yang dipakai di sini.
+// ============================================================================
 tasks.register("downloadHwidAar") {
     group = "huawei"
     description = "Mengunduh AAR Account Kit (hwid) dari repo resmi Huawei ke app/libs/"
