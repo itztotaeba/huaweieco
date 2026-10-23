@@ -1,11 +1,11 @@
-<!-- ============================================================================
-     themes.xml — Tema XML aplikasi (hanya "cangkang")
-     ----------------------------------------------------------------------------
-     Kenapa masih perlu XML theme padahal UI全 Compose?
-     Karena Android tetap butuh tema window utk phase sebelum Compose render
-     (splash awal, status bar). Warna & gaya konten kita serahkan ke
-     MaterialTheme di Theme.kt (Compose), jadi XML ini sengaja minimal.
-============================================================================ -->
+<!--
+    themes.xml - Tema XML aplikasi (hanya "cangkang").
+
+    Kenapa masih perlu XML theme padahal UI sepenuhnya Compose?
+    Karena Android tetap butuh tema window utk fase sebelum Compose render
+    (splash awal, status bar). Warna dan gaya konten kita serahkan ke
+    MaterialTheme di Theme.kt (Compose), jadi XML ini sengaja minimal.
+-->
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Parent NoActionBar: hapus action bar klasik sistem karena judul

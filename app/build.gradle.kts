@@ -18,6 +18,27 @@ plugins {
     alias(libs.plugins.kotlin.compose.compiler)
 }
 
+// ------------------------------------------------------------------------
+// PLUGIN APPGALLERY CONNECT (AGC) — membaca file app/agconnect-services.json
+// Fungsi plugin: menyuntikkan App ID, API key, dan metadata lain ke
+// AndroidManifest + BuildConfig saat build, jadi kit seperti Push/Account
+// langsung punya konfigurasi tanpa tulis manual di kode.
+// Classpath plugin dideklarasikan di root build.gradle.kts (buildscript).
+// PENTING: plugin hanya aktif bila file agconnect-services.json ADA. Kalau
+// belum ada, build dilewati dengan pesan jelas (aplikasi tetap bisa jalan
+// karena App ID dibaca dari placeholder manifest HMS_APP_ID di bawah).
+// ------------------------------------------------------------------------
+if (file("agconnect-services.json").exists()) {
+    apply(plugin = "com.huawei.agconnect")
+} else {
+    logger.warn(
+        "[AGC] app/agconnect-services.json belum ditemukan -> plugin AGC " +
+        "dilewati. Taruh file hasil download dari AppGallery Connect ke " +
+        "folder app/, atau isi App ID manual pada manifestPlaceholders " +
+        "[\"HMS_APP_ID\"] di file ini."
+    )
+}
+
 android {
     // Namespace = paket R class & BuildConfig. applicationId bisa beda, tapi
     // di sini kita samakan saja.
@@ -39,10 +60,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // --------------------------------------------------------------------
-        // Placeholder untuk AppGallery Connect (AGC). Beberapa kit (Push/
-        // Account) membaca APP ID dari metadata manifest. Isi nilainya dengan
-        // App ID dari konsol Huawei Developer, atau taruh file
-        // agconnect-services.json hasil download dari AGC ke folder app/.
+        // 👉👉 MASUKKAN APP ID DI SINI (satu-satunya tempat yang perlu diubah)
+        // Ambil dari AppGallery Connect -> Project Settings -> General Info,
+        // field "App ID" (angka panjang, contoh: 110812345).
+        // Ganti string "REPLACE_WITH_YOUR_APP_ID" dengan angka tsb (tetap dalam
+        // tanda kutip). Nilai ini disuntikkan ke AndroidManifest.xml sebagai
+        // metadata "push_service_appid" — dipakai HMS Core utk mengenali app.
+        // ALTERNATIF: kalau kamu menaruh file agconnect-services.json di folder
+        // app/, sebagian kit bisa membaca App ID otomatis dari file itu; tapi
+        // placeholder manifest di bawah tetap sebaiknya diisi juga.
         // --------------------------------------------------------------------
         manifestPlaceholders["HMS_APP_ID"] = "REPLACE_WITH_YOUR_APP_ID"
     }
