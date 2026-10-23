@@ -41,17 +41,22 @@ navigationCompose = "2.9.6"                    # Navigasi antar layar Compose
 # https://developer.huawei.com/repo
 hmsBase = "6.13.0.304"                         # Foundation: GRS, availability check, task API
 # ---- Account Kit ----
-# Penemuan penting saat membangun halaman AccountScreen:
-#   * Koordinat lama "com.huawei.hms:availableaccount:<x.y.z.3nn>" sudah DIHAPUS
-#     dari Maven repo Huawei (diverifikasi ulang: HTTP 404 untuk semua varian versi,
-#     termasuk coordinate baru "com.huawei.android.hms:security-ssl" yang juga 404).
-#   * Artinya: TIDAK ada artefak Gradle khusus Account Kit yang bisa di-resolve.
-#   * Solusi resmi dari arsitektur HMS: Account Kit bekerja lewat HMS BASE yang
-#     sudah kita import (libs.hms.base). Class auth (HuaweiIdAuthService, dsb.)
-#     diakses via reflection terhadap service ter-install di perangkat (HMS Core),
-#     sehingga tidak butuh dependency tambahan — inilah pola Remote Service /
-#     AvailablePlugin yang dipakai semua kit HMS.
-# Entri hmsAccount sengaja TIDAK dibuat agar gradle sync tidak gagal lagi.
+# Riwayat masalah & solusi final:
+#   * Koordinat lama "com.huawei.hms:availableaccount" memang sudah DIHAPUS dari
+#     Maven repo Huawei (diverifikasi: HTTP 404) — asumsi awal itu benar.
+#   * TAPI ternyata artefak Account Kit yang MASIH ADA dan resmi adalah
+#     "com.huawei.hms:hwid" (diverifikasi: maven-metadata.xml -> release
+#     6.15.0.300). Kami unduh & bongkar AAR-nya: berisi class Account Kit
+#     lengkap (HuaweiIdAuthManager, HuaweiIdAuthService, HuaweiIdAuthParamsHelper,
+#     AuthHuaweiId) plus activity hub internal yg dibutuhkan alur sign-in.
+#   * Sebelumnya kode hanya memakai reflection ke class yang TIDAK pernah ada
+#     (paket ...support.api.client / ...entity.auth) sehingga selalu jatuh ke
+#     pesan "Class Account Kit tidak ditemukan" — padahal HMS Core sehat.
+#   * Sekarang hwid di-import langsung dan helper memakai API konkret.
+#   * REVISI: koordinat Maven hwid TIDAK bisa dipakai (file .pom-nya HTTP 404
+#     di repo Huawei — diverifikasi). AAR diunduh task downloadHwidAar ke
+#     app/libs/ dan di-import via files(...); versi tetap dibaca dari sini.
+hmsHwid = "6.15.0.300"                         # Account Kit (Huawei ID sign-in)
 hmsLocation = "6.0.0.302"                      # Location Kit (fused location)
 hmsMaps = "6.15.1.324"                         # Map Kit (MapView HW + Google Maps View)
 hmsPush = "6.13.0.301"                         # Push Kit (token & pesan push)

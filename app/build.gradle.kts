@@ -147,12 +147,23 @@ dependencies {
     implementation(libs.hms.base)
 
     // 1) Account Kit — sign-in dengan Huawei ID.
-    //    DULU kita menambahkan "com.huawei.hms:availableaccount", tetapi artefak itu
-    //    TIDAK tersedia di Maven repo Huawei (diverifikasi: HTTP 404), sehingga
-    //    gradle sync gagal "Failed to resolve". API Account Kit (HuaweiIdAuthService,
-    //    Scopes, dll.) sebenarnya sudah tercakup lewat hms-base di atas, jadi tidak
-    //    perlu dependensi tambahan. Komentar ini ditinggalkan supaya alurnya jelas.
-    // implementation("com.huawei.hms:availableaccount:<versi>")  // <- nonaktif
+    //    Sejarah: artefak lama "com.huawei.hms:availableaccount" memang sudah
+    //    DIHAPUS dari Maven repo Huawei (HTTP 404). Tetapi Account Kit yang
+    //    masih tersedia resmi adalah "com.huawei.hms:hwid" (rilis 6.15.0.300,
+    //    diverifikasi langsung dari developer.huawei.com/repo). AAR-nya memuat
+    //    class lengkap: HuaweiIdAuthManager, HuaweiIdAuthService,
+    //    HuaweiIdAuthParamsHelper, AuthHuaweiId + activity hub internal yang
+    //    dibutuhkan alur getSignInIntent(). Tanpa dependensi ini, reflection ke
+    //    class Account Kit selalu gagal -> pesan "Class Account Kit tidak
+    //    ditemukan" meski HMS Core sehat.
+    //
+    //    CATATAN PENTING: artefak hwid hanya menyediakan file .aar di repo
+    //    Huawei (file .pom-nya HTTP 404 — diverifikasi langsung), sehingga
+    //    koordinat Maven "com.huawei.hms:hwid" TIDAK bisa di-resolve Gradle.
+    //    Solusi: AAR diunduh oleh task downloadHwidAar (lihat akhir file ini)
+    //    ke app/libs/ dan di-import sebagai file lokal. Jika file belum ada
+    //    saat pertama sync, jalankan: ./gradlew :app:downloadHwidAar
+    implementation(files("libs/hwid-${libs.versions.hmsHwid.get()}.aar"))
 
     // 2) Location Kit — lokasi terfusi (GPS + jaringan + sensor Huawei)
     implementation(libs.hms.location)
@@ -184,3 +195,43 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)          // instrumented test
     androidTestImplementation(libs.androidx.espresso.core)  // UI automator klasik
 }
+
+// ============================================================================
+// downloadHwidAar — mengoreksi resolve "com.huawei.hms:hwid" (Account Kit)
+// ----------------------------------------------------------------------------
+// Fakta terverifikasi (2026-10): repo Maven resmi Huawei hanya menyimpan file
+// .aar untuk artefak hwid; file .pom-nya HTTP 404. Karena Gradle mewajibkan
+// POM saat me-resolve dependensi Maven, koordinat "com.huawei.hms:hwid" TIDAK
+// bisa dipakai langsung (sync gagal "Could not find hwid-<v>.pom"). Solusi:
+// unduh .aar sekali ke app/libs/ lewat task di bawah, lalu deklarasikan
+// implementasinya sebagai file lokal (lihat blok dependencies{}).
+// ===========================================================================
+val hwidVersion = libs.versions.hmsHwid.get()
+val hwidAarFile = file("libs/hwid-$hwidVersion.aar")
+
+tasks.register("downloadHwidAar") {
+    group = "huawei"
+    description = "Mengunduh AAR Account Kit (hwid) dari repo resmi Huawei ke app/libs/"
+    outputs.file(hwidAarFile)
+    doLast {
+        if (!hwidAarFile.exists()) {
+            hwidAarFile.parentFile.mkdirs()
+            val url = java.net.URI(
+                "https://developer.huawei.com/repo/com/huawei/hms/hwid/$hwidVersion/hwid-$hwidVersion.aar"
+            ).toURL()
+            url.openStream().use { input ->
+                hwidAarFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            logger.lifecycle("downloadHwidAar: tersimpan di ${hwidAarFile.absolutePath}")
+        } else {
+            logger.lifecycle("downloadHwidAar: AAR sudah ada, lewati unduhan.")
+        }
+    }
+}
+
+// Jalankan unduhan SEKALI SAJA pada konfigurasi build berikutnya jika file
+// belum ada (mis. setelah user menghapus folder app/libs). files(...) bersifat
+// lazy terhadap isi file, jadi urutan ini aman selama file tersedia sebelum
+// compile; preBuild di bawah menjamin task jalan sebelum tahap build apa pun.
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("downloadHwidAar") }
+

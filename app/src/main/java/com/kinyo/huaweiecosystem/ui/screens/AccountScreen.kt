@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,6 +50,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,7 +83,12 @@ private sealed interface AccountUi {
 }
 
 @Composable
-fun AccountScreen(onBack: () -> Unit) {
+fun AccountScreen(
+    // Parameter onBack SENGAJA dipertahankan agar AppNavHost tidak perlu diubah;
+    // nilainya tidak dipakai karena navigasi kembali memakai gesture/tombol back
+    // sistem (NavHost sudah menangani popBackStack secara otomatis).
+    @Suppress("UNUSED_PARAMETER") onBack: () -> Unit = {},
+) {
     // ---- Akses konteks & activity ----
     // LocalContext.current di dalam ComponentActivity selalu berupa Activity,
     // jadi cast aman; kalau suatu saat bukan Activity -> fallback state error.
@@ -151,7 +159,17 @@ fun AccountScreen(onBack: () -> Unit) {
     // =========================================================================
     // RENDER — Scaffold standar sama seperti halaman lain (konsistensi visual)
     // =========================================================================
-    Scaffold(topBar = { DetailTopBar("Account Kit", onBack) }) { paddingValues ->
+    // Catatan UX: tombol "← Kembali" teks removed — aplikasi memakai gesture
+    // navigation / tombol back sistem (sudah ditangani NavHost via popBackStack,
+    // lihat AppNavHost). Judul saja yang ditampilkan di TopAppBar. TopAppBar
+    // juga otomatis mendapat padding status bar (inset edge-to-edge), jadi
+    // konten tidak lagi menempel/memper ke area atas layar.
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("Account Kit", fontWeight = FontWeight.Bold) },
+            windowInsets = WindowInsets.statusBars
+        )
+    }) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -291,20 +309,5 @@ private fun InfoRow(label: String, value: String) {
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontSize = 12.sp, fontFamily = FontFamily.Monospace,
              modifier = Modifier.padding(start = 12.dp))
-    }
-}
-
-// TopBar ringkas ala halaman detail lain (judul + tombol back teks).
-@Composable
-private fun DetailTopBar(title: String, onBack: () -> Unit) {
-    Surface(tonalElevation = 3.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(onClick = onBack) { Text("← Kembali") }
-            Spacer(Modifier.size(12.dp))
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
     }
 }
