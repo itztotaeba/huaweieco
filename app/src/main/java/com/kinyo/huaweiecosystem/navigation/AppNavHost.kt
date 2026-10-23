@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost     // komposisi tempat graph dipasan
 import androidx.navigation.compose.composable  // satu entri route
 import androidx.navigation.navArgument         // definisi argumen dinamis
 import com.kinyo.huaweiecosystem.model.KitMenu
+import com.kinyo.huaweiecosystem.ui.screens.AccountScreen   // halaman nyata Account Kit
 import com.kinyo.huaweiecosystem.ui.screens.DashboardScreen
 import com.kinyo.huaweiecosystem.ui.screens.KitDetailScreen
 
@@ -24,6 +25,7 @@ import com.kinyo.huaweiecosystem.ui.screens.KitDetailScreen
 object Routes {
     const val DASHBOARD = "dashboard"                 // route awal (start)
     const val KIT_DETAIL = "kit/{kitRoute}"           // {kitRoute} = placeholder argumen
+    const val ACCOUNT = "kit/account"                 // rute KHUSUS: halaman Account asli
 
     // Helper pembangun URL detail, misal build("map") -> "kit/map".
     fun kitDetail(route: String) = "kit/$route"
@@ -46,7 +48,17 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
 
-        // ---------- ROUTE 2: DETAIL SATU KIT ----------
+        // ---------- ROUTE 2: ACCOUNT KIT (halaman NYATA, bukan placeholder) ----------
+        // Urutan deklarasi penting: Navigation-Compose mencocokkan route secara
+        // berurutan. Rute statis "kit/account" dipasang SEBELUM pola dinamis
+        // "kit/{kitRoute}" agar tap kartu Account tidak tertangkap halaman detail.
+        composable(Routes.ACCOUNT) {
+            AccountScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // ---------- ROUTE 3: DETAIL SATU KIT (placeholder utk kit lain) ----------
         composable(
             route = Routes.KIT_DETAIL,
             arguments = listOf(

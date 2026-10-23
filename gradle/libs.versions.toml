@@ -40,11 +40,18 @@ navigationCompose = "2.9.6"                    # Navigasi antar layar Compose
 # Semua artefak di bawah berasal dari Maven repo resmi Huawei:
 # https://developer.huawei.com/repo
 hmsBase = "6.13.0.304"                         # Foundation: GRS, availability check, task API
-# NB: Artefak "availableaccount" (Account Kit) TIDAK ditemukan di Maven repo resmi
-# Huawei saat dicek (HTTP 404 untuk semua varian versi). Account Kit kini digabung ke
-# hms-base + modul auth; implementasi halaman Account akan memakai API dari base.
-# Entri ini sengaja DIHAPUS agar `gradle sync` tidak gagal. Nanti bila konsol AGC
-# menyediakan koordinat baru, tambahkan kembali di sini.
+# ---- Account Kit ----
+# Penemuan penting saat membangun halaman AccountScreen:
+#   * Koordinat lama "com.huawei.hms:availableaccount:<x.y.z.3nn>" sudah DIHAPUS
+#     dari Maven repo Huawei (diverifikasi ulang: HTTP 404 untuk semua varian versi,
+#     termasuk coordinate baru "com.huawei.android.hms:security-ssl" yang juga 404).
+#   * Artinya: TIDAK ada artefak Gradle khusus Account Kit yang bisa di-resolve.
+#   * Solusi resmi dari arsitektur HMS: Account Kit bekerja lewat HMS BASE yang
+#     sudah kita import (libs.hms.base). Class auth (HuaweiIdAuthService, dsb.)
+#     diakses via reflection terhadap service ter-install di perangkat (HMS Core),
+#     sehingga tidak butuh dependency tambahan — inilah pola Remote Service /
+#     AvailablePlugin yang dipakai semua kit HMS.
+# Entri hmsAccount sengaja TIDAK dibuat agar gradle sync tidak gagal lagi.
 hmsLocation = "6.0.0.302"                      # Location Kit (fused location)
 hmsMaps = "6.15.1.324"                         # Map Kit (MapView HW + Google Maps View)
 hmsPush = "6.13.0.301"                         # Push Kit (token & pesan push)
