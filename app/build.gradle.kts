@@ -70,6 +70,24 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    // ------------------------------------------------------------------------
+    // DUKUNGAN 16 KB PAGE SIZE (Android 15+ / syarat Google Play Nov 2025)
+    // ------------------------------------------------------------------------
+    // Beberapa SDK Huawei masih membawa native library lama yang LOAD
+    // segment-nya hanya ber-align 4 KB — contoh: Scan Kit menarik dependency
+    // "com.huawei.hms:ml-computer-sdkbase-inner" yang berisi lib/arm64-v8a/
+    // libml.so. Karena kita TIDAK memakai fitur scan lokal berbasis ML itu
+    // (mode default Remote-Scan sudah cukup), kita buang file .so tersebut
+    // dari APK lewat packagingOptions agar warning 16KB hilang sepenuhnya.
+    packaging {
+        jniLibs {
+            // Entri di bawah = path relatif terhadap isi APK (bukan AAR).
+            // '**' memastikan semua ABI tercakup, meski praktis hanya
+            // arm64-v8a yang bermasalah dengan alignment 4 KB.
+            excludes += "**/libml.so"
+        }
+    }
 }
 
 dependencies {
