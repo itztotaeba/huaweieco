@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+     AndroidManifest.xml — "KTP" aplikasi Android
+     File ini memberi tahu sistem Android: apa nama app, ikon, tema, permission
+     yang diminta, dan Activity mana yang jadi pintu masuk (launcher).
+============================================================================ -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ================= IZIN (PERMISSIONS) UNTUK KIT HMS =================
+         Declared di awal agar user sudah melihat daftar izin saat install;
+         permintaan runtime (dialog) tetap dilakukan per halaman kit nanti. -->
+
+    <!-- Location Kit & Map Kit (fitur "my location"): butuh koordinat -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />   <!-- GPS presisi -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- jaringan/WiFi -->
+
+    <!-- Scan Kit: kamera untuk memindai barcode/QR -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Push Kit: koneksi ke server Huawei + status jaringan -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Notifikasi (Android 13+/API 33): tanpa ini pesan push tak tampil -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Kamera bukan hardware wajib: emulator/non-kamera tetap bisa install -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -10,6 +35,34 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.HuaweiEcosystem" />
+        android:theme="@style/Theme.HuaweiEcosystem">
+
+        <!-- ==================================================================
+             METADATA APP ID HUAWEI — dibutuhkan Account/Push Kit utk mengenali
+             aplikasi terhadap HMS Core di perangkat. Nilai diambil dari
+             placeholder di build.gradle.kts (manifestPlaceholders["HMS_APP_ID"])
+             supaya ganti cukup satu tempat. Isi dengan App ID dari konsol
+             AppGallery Connect milikmu.
+        =================================================================== -->
+        <meta-data
+            android:name="push_service_appid"
+            android:value="${HMS_APP_ID}"
+            tools:replace="android:value" />
+
+        <!-- ==================================================================
+             MainActivity = satu-satunya Activity (single-activity architecture).
+             intent-filter MAIN + LAUNCHER menjadikannya ikon aplikasi di homescreen.
+        =================================================================== -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.HuaweiEcosystem">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>

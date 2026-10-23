@@ -1,20 +1,104 @@
+# ============================================================================
+# libs.versions.toml — "Version Catalog" (PUSAT VERSI DEPENDENSI PROYEK)
+# ----------------------------------------------------------------------------
+# Konsep: Alih-alih menulis versi dependensi langsung di build.gradle.kts,
+# semua versi dikumpulkan di file ini supaya:
+#   1. Satu sumber kebenaran (single source of truth) untuk seluruh proyek.
+#   2. Mudah upgrade — ubah satu baris di [versions], semua modul ikut.
+#   3. Bisa dirujuk di build.gradle.kts lewat alias, contoh: libs.hms.base
+#      (tanda titik = pengganti tanda hubung pada nama library).
+#
+# CATATAN KOMPATIBILITAS AGP 9.4.1:
+#   - AGP 9.x membutuhkan Gradle 9.x (proyek ini pakai Gradle 9.6.0).
+#   - Plugin "org.jetbrains.kotlin.android" TIDAK BOLEH dipakai bersama
+#     built-in Kotlin plugin bawaan AGP 9 (AGP 9 sudah menyertakan dukungan
+#     Kotlin), karena itu tidak ada plugin kotlin-android di file ini.
+#   - Compose memakai androidx.compose:compose-bom yang menyamakan versi
+#     ui/foundation/material3 secara transitif.
+# ============================================================================
+
 [versions]
-agp = "9.4.1"
-coreKtx = "1.19.1"
+# ---- Build tooling (sinkron dengan Android Studio terbaru) ----
+agp = "9.4.1"                                  # Android Gradle Plugin
+kotlin = "2.2.10"                              # Versi Kotlin (dipakai Compose compiler plugin)
+compileSdk = "37"                              # API level yang dipakai utk mengompilasi
+minSdk = "24"                                  # Android terlama yang didukung (7.0 Nougat)
+targetSdk = "37"                               # API level perilaku runtime ditargetkan
+
+# ---- AndroidX / Jetpack ----
+coreKtx = "1.19.1"                             # Ekstensi Kotlin untuk Context/Bundle/dsb
+appcompat = "1.7.1"                            # Beberapa SDK HMS remote-UI masih butuh AppCompat
+material = "1.14.0"                            # Material Components views (referensi legacy)
+activityCompose = "1.13.0"                     # Bridge agar ComponentActivity bisa setContent{}
+composeBom = "2026.05.01"                      # BOM = menyamakan versi seluruh lib Compose
+lifecycleRuntimeKtx = "2.10.2"                 # Lifecycle-aware coroutine scope
+navigationCompose = "2.9.6"                    # Navigasi antar layar Compose
+
+# ---- Huawei HMS Core SDK ----
+# Semua artefak di bawah berasal dari Maven repo resmi Huawei:
+# https://developer.huawei.com/repo
+hmsBase = "6.13.0.304"                         # Foundation: GRS, availability check, task API
+hmsAvailableaccount = "6.13.0.304"             # Account Kit (API sign-in Huawei ID)
+hmsLocation = "6.0.0.302"                      # Location Kit (fused location)
+hmsMaps = "6.15.1.324"                         # Map Kit (MapView HW + Google Maps View)
+hmsPush = "6.13.0.301"                         # Push Kit (token & pesan push)
+hmsScan = "2.15.0.301"                         # Scan Kit (QR/barcode remote & local SDK)
+hmsSafetydetect = "6.7.0.305"                  # Safety Detect (root detection, sim detect, dsb)
+hmsFido = "4.0.0.300"                          # FIDO (biometric login berbasis Huawei ID)
+hmsSite = "6.2.0.301"                          # Site/planning component (dependency internal beberapa kit)
+hmsOpendevice = "6.13.0.301"                   # Device-ids / open device (dipakai sebagian kit)
+
+# ---- Testing ----
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-appcompat = "1.6.1"
-material = "1.10.0"
 
 [libraries]
+# ---------- AndroidX core ----------
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+
+# ---------- Jetpack Compose ----------
+# compose-bom memastikan ui, foundation, material3, tooling berada di versi
+# yang saling kompatibel tanpa perlu menuliskan versi tiap artefak.
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
+# ---------- Huawei Mobile Services (HMS) Core Kits ----------
+hms-base = { group = "com.huawei.hms", name = "base", version.ref = "hmsBase" }
+hms-availableaccount = { group = "com.huawei.hms", name = "availableaccount", version.ref = "hmsAvailableaccount" }
+hms-location = { group = "com.huawei.hms", name = "location", version.ref = "hmsLocation" }
+hms-maps = { group = "com.huawei.hms", name = "maps", version.ref = "hmsMaps" }
+hms-push = { group = "com.huawei.hms", name = "push", version.ref = "hmsPush" }
+hms-scan = { group = "com.huawei.hms", name = "scan", version.ref = "hmsScan" }
+hms-safetydetect = { group = "com.huawei.hms", name = "safetydetect", version.ref = "hmsSafetydetect" }
+hms-fido = { group = "com.huawei.hms", name = "fido", version.ref = "hmsFido" }
+hms-site = { group = "com.huawei.hms", name = "site", version.ref = "hmsSite" }
+hms-opendevice = { group = "com.huawei.hms", name = "opendevice", version.ref = "hmsOpendevice" }
+
+# ---------- Views klasik (referensi legacy, tidak dipakai di UI Compose) ----------
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# ---------- Testing ----------
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-
+# --------------------------------------------------------------------------
+# Compose Compiler Gradle Plugin — WAJIB sejak Kotlin 2.0!
+# Sejak Kotlin 2.x, compiler Compose dipisah dari JetBrains ke plugin sendiri
+# (org.jetbrains.kotlin.plugin.compose). Tanpa ini build error:
+# "Starting in Kotlin 2.0, the Compose Compiler Gradle plugin is required".
+# Versinya HARUS sama dengan versi Kotlin yang dipakai toolchain.
+# --------------------------------------------------------------------------
+kotlin-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
