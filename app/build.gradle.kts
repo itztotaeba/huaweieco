@@ -5,6 +5,8 @@
 // ditargetkan, fitur apa yang diaktifkan, dan library apa yang dibutuhkan.
 // ============================================================================
 
+import java.net.URI
+
 plugins {
     // Alias dari gradle/libs.versions.toml -> com.android.application v9.4.1.
     // NB: AGP 9 sudah menyertakan dukungan Kotlin secara built-in, jadi kita
@@ -206,6 +208,11 @@ dependencies {
 // unduh .aar sekali ke app/libs/ lewat task di bawah, lalu deklarasikan
 // implementasinya sebagai file lokal (lihat blok dependencies{}).
 // ===========================================================================
+// Catatan verifikasi (Gradle 8.x + Kotlin DSL): ekspresi `java.net.URI(...)`
+// TIDAK bisa dipakai langsung di dalam closure `doLast {}` — script compiler
+// Gradle gagal resolve paket `java.*` di scope tersebut ("Unresolved reference
+// 'net'"). Karena itu kelas URI/URL diimpor secara eksplisit di header file
+// dan hanya nama pendeknya yang digunakan di dalam task.
 val hwidVersion = libs.versions.hmsHwid.get()
 val hwidAarFile = file("libs/hwid-$hwidVersion.aar")
 
@@ -216,7 +223,7 @@ tasks.register("downloadHwidAar") {
     doLast {
         if (!hwidAarFile.exists()) {
             hwidAarFile.parentFile.mkdirs()
-            val url = java.net.URI(
+            val url = URI(
                 "https://developer.huawei.com/repo/com/huawei/hms/hwid/$hwidVersion/hwid-$hwidVersion.aar"
             ).toURL()
             url.openStream().use { input ->
@@ -229,9 +236,10 @@ tasks.register("downloadHwidAar") {
     }
 }
 
-// Jalankan unduhan SEKALI SAJA pada konfigurasi build berikutnya jika file
-// belum ada (mis. setelah user menghapus folder app/libs). files(...) bersifat
-// lazy terhadap isi file, jadi urutan ini aman selama file tersedia sebelum
-// compile; preBuild di bawah menjamin task jalan sebelum tahap build apa pun.
-tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("downloadHwidAar") }
+// Unduhan berjalan otomatis HANYA saat file belum ada (mis. setelah clone
+// bersih atau folder app/libs dihapus). Pengecekan dilakukan di configuration
+// phase agar tidak ada I/O jaringan tak perlu saat build reguler.
+if (!hwidAarFile.exists()) {
+    tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("downloadHwidAar") }
+}
 
